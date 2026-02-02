@@ -14,6 +14,8 @@ buffer_emociones = deque(maxlen=15)
 ANCHO_CAM, ALTO_CAM = 640, 480
 ANCHO_PANEL = 300
 canvas_w = ANCHO_CAM + ANCHO_PANEL
+FPS_OBJETIVO = 30
+FRAME_DELAY = int(1000 / FPS_OBJETIVO)  # ms entre frames
 
 # --- Umbrales de detección de emociones ---
 UMBRAL_SORPRESA_BOCA = 0.4       # Apertura de boca para sorpresa
@@ -118,7 +120,7 @@ try:
         cv2.putText(ui, info[2], (ANCHO_CAM + 20, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
         cv2.imshow("Asistente Emocional", ui)
-        if cv2.waitKey(1) & 0xFF == ord('q'): break
+        if cv2.waitKey(FRAME_DELAY) & 0xFF == ord('q'): break
 
 except KeyboardInterrupt:
     print("\nPrograma interrumpido por el usuario")
