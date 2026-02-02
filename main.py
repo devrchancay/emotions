@@ -1,7 +1,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from collections import deque
+from collections import deque, Counter
 
 # --- Configuración de MediaPipe ---
 mp_face = mp.solutions.face_mesh
@@ -24,7 +24,8 @@ UMBRAL_TRISTE_CURVATURA = -0.05 # Curvatura de labios para tristeza
 
 def obtener_emocion(lista):
     if not lista: return "NEUTRO"
-    return max(set(lista), key=lista.count)
+    # Counter cuenta todas las ocurrencias en una sola pasada, mientras que el método anterior llamaba lista.count() para cada elemento único.
+    return Counter(lista).most_common(1)[0][0]
 
 def get_punto(face, idx):
     """Obtiene las coordenadas de un landmark en píxeles."""
