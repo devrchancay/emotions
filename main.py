@@ -51,6 +51,10 @@ try:
                 ojo_izq, ojo_der = get_p(133), get_p(362)
                 dist_ojos = np.linalg.norm(ojo_izq - ojo_der) # Nuestra "regla" universal
 
+                # Evitar división por cero si los landmarks están mal detectados
+                if dist_ojos < 1.0:
+                    continue
+
                 # Dibujar puntos de depuración (para que veas que sí detecta)
                 for idx in [13, 14, 61, 291, 52, 282, 0]:
                     p = get_p(idx)
