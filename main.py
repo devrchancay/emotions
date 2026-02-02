@@ -19,6 +19,10 @@ def obtener_emocion(lista):
     if not lista: return "NEUTRO"
     return max(set(lista), key=lista.count)
 
+def get_punto(face, idx):
+    """Obtiene las coordenadas de un landmark en píxeles."""
+    return np.array([face.landmark[idx].x * ANCHO_CAM, face.landmark[idx].y * ALTO_CAM])
+
 cam = cv2.VideoCapture(0)
 
 try:
@@ -43,12 +47,8 @@ try:
 
         if res.multi_face_landmarks:
             for face in res.multi_face_landmarks:
-                # 1. Puntos clave (Coordenadas reales)
-                def get_p(idx):
-                    return np.array([face.landmark[idx].x * ANCHO_CAM, face.landmark[idx].y * ALTO_CAM])
-
                 # Puntos de referencia
-                ojo_izq, ojo_der = get_p(133), get_p(362)
+                ojo_izq, ojo_der = get_punto(face, 133), get_punto(face, 362)
                 dist_ojos = np.linalg.norm(ojo_izq - ojo_der) # Nuestra "regla" universal
 
                 # Evitar división por cero si los landmarks están mal detectados
@@ -57,24 +57,24 @@ try:
 
                 # Dibujar puntos de depuración (para que veas que sí detecta)
                 for idx in [13, 14, 61, 291, 52, 282, 0]:
-                    p = get_p(idx)
+                    p = get_punto(face,idx)
                     cv2.circle(ui, (int(p[0]), int(p[1])), 2, (0, 255, 0), -1)
 
                 # --- MÉTRICAS RELATIVAS A LA DISTANCIA DE OJOS ---
                 # Boca
-                apertura_boca = np.linalg.norm(get_p(13) - get_p(14)) / dist_ojos
-                ancho_boca = np.linalg.norm(get_p(61) - get_p(291)) / dist_ojos
+                apertura_boca = np.linalg.norm(get_punto(face,13) - get_punto(face,14)) / dist_ojos
+                ancho_boca = np.linalg.norm(get_punto(face,61) - get_punto(face,291)) / dist_ojos
 
                 # Cejas (Enojo/Tristeza)
                 # Distancia desde el centro de la ceja al ojo
-                ceja_izq = np.linalg.norm(get_p(52) - get_p(159)) / dist_ojos
-                ceja_der = np.linalg.norm(get_p(282) - get_p(386)) / dist_ojos
+                ceja_izq = np.linalg.norm(get_punto(face,52) - get_punto(face,159)) / dist_ojos
+                ceja_der = np.linalg.norm(get_punto(face,282) - get_punto(face,386)) / dist_ojos
                 altura_cejas = (ceja_izq + ceja_der) / 2
 
                 # Labios (Comisuras para sonrisa o tristeza)
-                comisura_izq = get_p(61)
-                comisura_der = get_p(291)
-                centro_boca = get_p(0)
+                comisura_izq = get_punto(face,61)
+                comisura_der = get_punto(face,291)
+                centro_boca = get_punto(face,0)
                 # Si las comisuras están más arriba que el centro (Y es menor), es sonrisa
                 curvatura = (centro_boca[1] - (comisura_izq[1] + comisura_der[1]) / 2) / dist_ojos
 
