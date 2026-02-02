@@ -15,6 +15,13 @@ ANCHO_CAM, ALTO_CAM = 640, 480
 ANCHO_PANEL = 300
 canvas_w = ANCHO_CAM + ANCHO_PANEL
 
+# --- Umbrales de detección de emociones ---
+UMBRAL_SORPRESA_BOCA = 0.4       # Apertura de boca para sorpresa
+UMBRAL_FELIZ_CURVATURA = 0.05   # Curvatura de labios para felicidad
+UMBRAL_FELIZ_ANCHO = 0.9        # Ancho de boca para felicidad
+UMBRAL_ENOJADO_CEJAS = 0.18     # Altura de cejas para enojo
+UMBRAL_TRISTE_CURVATURA = -0.05 # Curvatura de labios para tristeza
+
 def obtener_emocion(lista):
     if not lista: return "NEUTRO"
     return max(set(lista), key=lista.count)
@@ -78,14 +85,14 @@ try:
                 # Si las comisuras están más arriba que el centro (Y es menor), es sonrisa
                 curvatura = (centro_boca[1] - (comisura_izq[1] + comisura_der[1]) / 2) / dist_ojos
 
-                # --- REGLAS DE DETECCIÓN (Umbrales más generosos) ---
-                if apertura_boca > 0.4:
+                # --- REGLAS DE DETECCIÓN ---
+                if apertura_boca > UMBRAL_SORPRESA_BOCA:
                     emocion_detectada = "SORPRESA"
-                elif curvatura > 0.05 or ancho_boca > 0.9:
+                elif curvatura > UMBRAL_FELIZ_CURVATURA or ancho_boca > UMBRAL_FELIZ_ANCHO:
                     emocion_detectada = "FELIZ"
-                elif altura_cejas < 0.18: # Cejas bajas = enojo
+                elif altura_cejas < UMBRAL_ENOJADO_CEJAS:
                     emocion_detectada = "ENOJADO"
-                elif curvatura < -0.05: # Comisuras caídas
+                elif curvatura < UMBRAL_TRISTE_CURVATURA:
                     emocion_detectada = "TRISTE"
                 else:
                     emocion_detectada = "NEUTRO"
