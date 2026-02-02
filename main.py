@@ -1,3 +1,4 @@
+import os
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -16,7 +17,7 @@ ANCHO_PANEL = 300
 canvas_w = ANCHO_CAM + ANCHO_PANEL
 FPS_OBJETIVO = 30
 FRAME_DELAY = int(1000 / FPS_OBJETIVO)  # ms entre frames
-DEBUG = True  # Mostrar valores de métricas en pantalla
+DEBUG = os.getenv("DEBUG", "0").lower() in ("1", "true", "yes")
 
 # --- Umbrales de detección de emociones ---
 UMBRAL_SORPRESA_BOCA = 0.55      # Apertura de boca para sorpresa (más alto = menos sensible)
