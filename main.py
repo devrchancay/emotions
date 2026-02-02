@@ -90,6 +90,8 @@ try:
                 else:
                     emocion_detectada = "NEUTRO"
 
+                break  # Solo procesar la primera cara detectada
+
         buffer_emociones.append(emocion_detectada)
         final_emo = obtener_emocion(list(buffer_emociones))
 
