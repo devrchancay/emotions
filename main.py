@@ -3,6 +3,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from collections import deque, Counter
+from datetime import datetime
 
 # --- Configuración de MediaPipe ---
 mp_face = mp.solutions.face_mesh
@@ -18,6 +19,13 @@ canvas_w = ANCHO_CAM + ANCHO_PANEL
 FPS_OBJETIVO = 30
 FRAME_DELAY = int(1000 / FPS_OBJETIVO)  # ms entre frames
 DEBUG = os.getenv("DEBUG", "0").lower() in ("1", "true", "yes")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# --- Log de emociones en memoria ---
+log_emociones = []  # Lista de (timestamp, emocion)
+ultima_emocion = None  # Última emoción registrada en el log
+msg_guardado = ""   # Mensaje temporal de ruta guardada
+msg_guardado_timer = 0  # Frames restantes para mostrar mensaje
 
 # --- Umbrales de detección de emociones ---
 UMBRAL_SORPRESA_BOCA = 0.55      # Apertura de boca para sorpresa (más alto = menos sensible)
@@ -114,6 +122,11 @@ try:
         buffer_emociones.append(emocion_detectada)
         final_emo = obtener_emocion(list(buffer_emociones))
 
+        # Registrar emoción solo cuando cambia
+        if final_emo != ultima_emocion:
+            log_emociones.append((datetime.now().strftime("%Y-%m-%d %H:%M:%S"), final_emo))
+            ultima_emocion = final_emo
+
         # --- PANEL DERECHO ---
         textos = {
             "FELIZ": ["SONRISA DETECTADA", "Te ves genial.", "Sigue con esa actitud!"],
@@ -135,8 +148,39 @@ try:
             cv2.putText(ui, f"Curvatura: {debug_metrics['curvatura']:.3f} (umbral: {UMBRAL_FELIZ_CURVATURA})", (ANCHO_CAM + 20, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (150, 255, 150), 1)
             cv2.putText(ui, f"Boca: {debug_metrics['boca']:.3f} (umbral: {UMBRAL_SORPRESA_BOCA})", (ANCHO_CAM + 20, 290), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 150, 150), 1)
 
+        # Instrucción para guardar sesión
+        cv2.putText(ui, "Ctrl+G: Guardar sesion", (ANCHO_CAM + 20, ALTO_CAM - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (120, 120, 120), 1)
+        cv2.putText(ui, "Q: Salir", (ANCHO_CAM + 20, ALTO_CAM - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (120, 120, 120), 1)
+
+        # Mostrar mensaje de guardado temporal
+        if msg_guardado_timer > 0:
+            cv2.putText(ui, "Sesion guardada en:", (ANCHO_CAM + 20, ALTO_CAM - 90), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 255, 0), 1)
+            # Partir la ruta en líneas si es muy larga
+            ruta = msg_guardado
+            max_chars = 30
+            y_offset = ALTO_CAM - 70
+            for i in range(0, len(ruta), max_chars):
+                cv2.putText(ui, ruta[i:i+max_chars], (ANCHO_CAM + 20, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
+                y_offset += 15
+            msg_guardado_timer -= 1
+
         cv2.imshow("Asistente Emocional", ui)
-        if cv2.waitKey(FRAME_DELAY) & 0xFF == ord('q'): break
+        key = cv2.waitKey(FRAME_DELAY) & 0xFF
+        if key == ord('q'):
+            break
+        elif key == 7:  # Ctrl+G
+            ahora = datetime.now()
+            nombre_archivo = ahora.strftime("%Y%m%d-%H%M%S") + "-log.txt"
+            ruta_archivo = os.path.join(SCRIPT_DIR, nombre_archivo)
+            with open(ruta_archivo, "w", encoding="utf-8") as f:
+                f.write(f"Sesion de emociones - {ahora.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total registros: {len(log_emociones)}\n")
+                f.write("=" * 40 + "\n")
+                for ts, emo in log_emociones:
+                    f.write(f"{ts}  {emo}\n")
+            msg_guardado = ruta_archivo
+            msg_guardado_timer = FPS_OBJETIVO * 5  # Mostrar por 5 segundos
+            print(f"Log guardado en: {ruta_archivo}")
 
 except KeyboardInterrupt:
     print("\nPrograma interrumpido por el usuario")
