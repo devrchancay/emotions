@@ -4,6 +4,9 @@ import mediapipe as mp
 import numpy as np
 from collections import deque, Counter
 from datetime import datetime
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 # --- Configuración de MediaPipe ---
 mp_face = mp.solutions.face_mesh
@@ -178,9 +181,28 @@ try:
                 f.write("=" * 40 + "\n")
                 for ts, emo in log_emociones:
                     f.write(f"{ts}  {emo}\n")
+            # Generar gráfico de barras
+            nombre_grafico = ahora.strftime("%Y%m%d-%H%M%S") + "-log.png"
+            ruta_grafico = os.path.join(SCRIPT_DIR, nombre_grafico)
+            todas_emociones = ["FELIZ", "TRISTE", "ENOJADO", "SORPRESA", "NEUTRO"]
+            conteo = Counter(emo for _, emo in log_emociones)
+            valores = [conteo.get(e, 0) for e in todas_emociones]
+            colores = ["#2ecc71", "#3498db", "#e74c3c", "#f39c12", "#95a5a6"]
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.bar(todas_emociones, valores, color=colores)
+            ax.set_title(f"Sesion {ahora.strftime('%Y-%m-%d %H:%M:%S')}")
+            ax.set_ylabel("Transiciones")
+            ax.set_xlabel("Emocion")
+            for i, v in enumerate(valores):
+                ax.text(i, v + 0.2, str(v), ha="center", fontweight="bold")
+            fig.tight_layout()
+            fig.savefig(ruta_grafico, dpi=150)
+            plt.close(fig)
+
             msg_guardado = ruta_archivo
             msg_guardado_timer = FPS_OBJETIVO * 5  # Mostrar por 5 segundos
             print(f"Log guardado en: {ruta_archivo}")
+            print(f"Grafico guardado en: {ruta_grafico}")
 
 except KeyboardInterrupt:
     print("\nPrograma interrumpido por el usuario")
