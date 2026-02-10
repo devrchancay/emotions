@@ -45,6 +45,69 @@ def get_punto(face, idx):
     """Obtiene las coordenadas de un landmark en píxeles."""
     return np.array([face.landmark[idx].x * ANCHO_CAM, face.landmark[idx].y * ALTO_CAM])
 
+# --- Malla geométrica facial (wireframe) ---
+MALLA_VERTICES = [
+    10, 21, 251,                          # Frente, sienes
+    46, 276, 107, 336,                    # Cejas externas e internas
+    33, 133, 263, 362,                    # Esquinas de ojos
+    159, 386,                             # Párpados superiores
+    145, 374,                             # Párpados inferiores
+    6, 1, 98, 327,                        # Nariz
+    116, 345,                             # Pómulos
+    61, 291, 0, 17,                       # Boca
+    132, 361, 58, 288, 152,              # Mandíbula y mentón
+]
+
+MALLA_CONEXIONES = [
+    # Frente → cejas
+    (10, 107), (10, 336), (10, 21), (10, 251),
+    (21, 46), (251, 276),
+    (46, 107), (276, 336), (107, 336),
+    # Cejas → ojos
+    (46, 33), (107, 133), (276, 263), (336, 362),
+    (33, 159), (159, 133), (263, 386), (386, 362),
+    (33, 145), (145, 133), (263, 374), (374, 362),
+    # Ojos → nariz
+    (133, 6), (362, 6), (6, 1), (1, 98), (1, 327),
+    (133, 98), (362, 327),
+    # Pómulos
+    (33, 116), (263, 345), (116, 98), (345, 327),
+    # Boca
+    (98, 61), (327, 291), (116, 61), (345, 291),
+    (61, 0), (291, 0), (61, 17), (291, 17), (0, 1),
+    # Mandíbula
+    (21, 132), (251, 361), (132, 116), (361, 345),
+    (132, 58), (361, 288), (58, 61), (288, 291),
+    (58, 152), (288, 152), (17, 152),
+]
+
+COLOR_LINEA = (0, 255, 0)       # Verde brillante
+COLOR_GLOW = (0, 100, 0)        # Verde oscuro para resplandor
+COLOR_PUNTO = (180, 255, 180)   # Verde claro para vértices
+
+
+def dibujar_rostro(ui, face):
+    """Dibuja malla geométrica wireframe sobre el rostro con glow suave en vértices."""
+    # Capa separada para el glow de los vértices
+    glow = np.zeros_like(ui)
+    for idx in MALLA_VERTICES:
+        p = tuple(get_punto(face, idx).astype(int))
+        cv2.circle(glow, p, 8, (0, 180, 0), -1, cv2.LINE_AA)
+    glow = cv2.GaussianBlur(glow, (15, 15), 0)
+    cv2.add(ui, glow, ui)
+
+    # Dibujar líneas de conexión
+    for a, b in MALLA_CONEXIONES:
+        pa = tuple(get_punto(face, a).astype(int))
+        pb = tuple(get_punto(face, b).astype(int))
+        cv2.line(ui, pa, pb, COLOR_LINEA, 1, cv2.LINE_AA)
+
+    # Dibujar centro del vértice (punto pequeño nítido)
+    for idx in MALLA_VERTICES:
+        p = tuple(get_punto(face, idx).astype(int))
+        cv2.circle(ui, p, 2, COLOR_PUNTO, -1, cv2.LINE_AA)
+
+
 def detectar_camaras(max_index=10):
     """Detecta las cámaras disponibles probando índices."""
     camaras = []
@@ -217,10 +280,8 @@ try:
                 if dist_ojos < 1.0:
                     continue
 
-                # Dibujar puntos de depuración (para que veas que sí detecta)
-                for idx in [13, 14, 61, 291, 52, 282, 0]:
-                    p = get_punto(face,idx)
-                    cv2.circle(ui, (int(p[0]), int(p[1])), 2, (0, 255, 0), -1)
+                # Dibujar malla facial por zonas
+                dibujar_rostro(ui, face)
 
                 # --- MÉTRICAS RELATIVAS A LA DISTANCIA DE OJOS ---
                 # Boca
@@ -315,9 +376,10 @@ try:
             ahora = datetime.now()
             nombre_archivo = ahora.strftime("%Y%m%d-%H%M%S") + "-log.txt"
             ruta_archivo = os.path.join(SCRIPT_DIR, nombre_archivo)
+            titulo_sesion = f"Analisis de emociones de {nombre_usuario} {apellido_usuario}"
             with open(ruta_archivo, "w", encoding="utf-8") as f:
-                f.write(f"Sesion de emociones - {ahora.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Usuario: {nombre_usuario} {apellido_usuario}\n")
+                f.write(f"{titulo_sesion}\n")
+                f.write(f"Fecha: {ahora.strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"Total registros: {len(log_emociones)}\n")
                 f.write("=" * 40 + "\n")
                 for ts, emo in log_emociones:
@@ -331,7 +393,7 @@ try:
             colores = ["#2ecc71", "#3498db", "#e74c3c", "#f39c12", "#95a5a6"]
             fig, ax = plt.subplots(figsize=(8, 4))
             ax.bar(todas_emociones, valores, color=colores)
-            ax.set_title(f"Sesion {ahora.strftime('%Y-%m-%d %H:%M:%S')}")
+            ax.set_title(f"{titulo_sesion} - {ahora.strftime('%Y-%m-%d %H:%M:%S')}")
             ax.set_ylabel("Transiciones")
             ax.set_xlabel("Emocion")
             for i, v in enumerate(valores):
